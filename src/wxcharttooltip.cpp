@@ -35,6 +35,7 @@
 #include "wxchartbackground.h"
 #include "wxchartsutilities.h"
 #include <wx/brush.h>
+#include <wx/vector.h>
 
 wxChartTooltip::wxChartTooltip(const wxPoint2DDouble &position,
                                const wxString &text)
@@ -54,9 +55,46 @@ void wxChartTooltip::Draw(wxGraphicsContext &gc)
 
     wxFont font(wxSize(0, m_options.GetFontSize()),
         m_options.GetFontFamily(), m_options.GetFontStyle(), wxFONTWEIGHT_NORMAL);
-    wxDouble tooltipWidth;
-    wxDouble tooltipHeight;
-    wxChartsUtilities::GetTextSize(gc, font, text, tooltipWidth, tooltipHeight);
+
+    // BankAccount-added: measure and draw each line separately - the text can contain embedded
+    // '\n' (e.g. a pie slice's category/total/average on separate lines - see
+    // wxChartSliceData::SetTooltipTextOverride()), and wxGraphicsContext's GetTextExtent()/
+    // DrawText() aren't a given to lay out multi-line text correctly across every backend on
+    // their own, so this lays it out itself: width is the widest line, height is the line count
+    // times one line's height, and each line is drawn at its own vertical offset.
+    wxVector<wxString> lines;
+    {
+        wxString remaining = text;
+        for (;;)
+        {
+            int pos = remaining.Find(wxT('\n'));
+            if (pos == wxNOT_FOUND)
+            {
+                lines.push_back(remaining);
+                break;
+            }
+            lines.push_back(remaining.Left(pos));
+            remaining = remaining.Mid(pos + 1);
+        }
+    }
+
+    wxDouble tooltipWidth = 0;
+    wxDouble lineHeight = 0;
+    for (const wxString& line : lines)
+    {
+        wxDouble w, h;
+        wxChartsUtilities::GetTextSize(gc, font, line, w, h);
+        if (w > tooltipWidth)
+        {
+            tooltipWidth = w;
+        }
+        if (h > lineHeight)
+        {
+            lineHeight = h;
+        }
+    }
+    wxDouble tooltipHeight = lineHeight * lines.size();
+
     tooltipWidth += 2 * m_options.GetHorizontalPadding();
     tooltipHeight += 2 * m_options.GetVerticalPadding();
 
@@ -69,7 +107,11 @@ void wxChartTooltip::Draw(wxGraphicsContext &gc)
     background.Draw(tooltipX, tooltipY, tooltipWidth, tooltipHeight, gc);
 
     gc.SetFont(font, m_options.GetFontColor());
-    gc.DrawText(text, tooltipX + m_options.GetHorizontalPadding(), tooltipY + m_options.GetVerticalPadding());
+    for (size_t i = 0; i < lines.size(); ++i)
+    {
+        gc.DrawText(lines[i], tooltipX + m_options.GetHorizontalPadding(),
+            tooltipY + m_options.GetVerticalPadding() + (lineHeight * i));
+    }
 }
 
 const wxPoint2DDouble& wxChartTooltip::GetPosition() const

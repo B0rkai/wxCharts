@@ -21,6 +21,7 @@
 */
 
 #include "wxchartslicedata.h"
+#include "wxchartsutilities.h"
 #include <sstream>
 
 wxChartSliceData::wxChartSliceData(wxDouble value,
@@ -53,7 +54,14 @@ const wxString& wxChartSliceData::GetLabel() const
 
 wxString wxChartSliceData::GetTooltipText() const
 {
-    std::stringstream result;
-    result << m_label << ": " << m_value;
-    return result.str();
+    if (!m_tooltipTextOverride.IsEmpty())
+    {
+        return m_tooltipTextOverride;
+    }
+    return m_label + wxT(": ") + wxChartsUtilities::FormatNumber(m_value);
+}
+
+void wxChartSliceData::SetTooltipTextOverride(const wxString &text)
+{
+    m_tooltipTextOverride = text;
 }

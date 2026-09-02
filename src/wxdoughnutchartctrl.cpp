@@ -52,8 +52,7 @@ wxDoughnutChart& wxDoughnutChartCtrl::GetChart()
     return m_doughnutChart;
 }
 
-void wxDoughnutChartCtrl::OnUpdate(const std::map<wxString, 
-	                               wxChartSliceData> &data)
+void wxDoughnutChartCtrl::OnUpdate(const wxVector<wxChartSliceData> &data)
 {
     m_doughnutChart.SetData(data);
     auto parent = this->GetParent();

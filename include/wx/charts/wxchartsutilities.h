@@ -61,6 +61,12 @@ public:
     static wxBrush CreateBrush(const wxChartsBrushOptions& options);
 
     static size_t GetDecimalPlaces();
+    /// Formats a value for on-screen display (axis labels, tooltips) as a plain fixed-notation,
+    /// thousands-grouped number - e.g. 74474517 -> "74,474,517" - instead of the default
+    /// std::ostream << formatting other call sites used to rely on, which switches to
+    /// scientific notation ("7.44745e+07") for any magnitude at or above 1e6. BankAccount-added:
+    /// not part of the original wxCharts API.
+    static wxString FormatNumber(wxDouble value);
     static void CalculateGridRange(wxDouble minValue,
         wxDouble maxValue, wxDouble &graphMinValue,
         wxDouble &graphMaxValue, wxDouble &valueRange, 

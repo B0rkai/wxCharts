@@ -33,6 +33,7 @@
 
 #include "wxchartsutilities.h"
 #include <sstream>
+#include <cmath>
 
 wxPen wxChartsUtilities::CreatePen(const wxChartsPenOptions& options)
 {
@@ -47,6 +48,42 @@ wxBrush wxChartsUtilities::CreateBrush(const wxChartsBrushOptions& options)
 size_t wxChartsUtilities::GetDecimalPlaces()
 {
     return 1;
+}
+
+wxString wxChartsUtilities::FormatNumber(wxDouble value)
+{
+    bool negative = value < 0;
+    wxDouble absValue = negative ? -value : value;
+
+    long long whole = (long long)absValue;
+    // round to 2 decimal places rather than truncate, and carry a round-up-to-.00 into the
+    // whole part (e.g. 1999.999 -> whole=1999 cents=100 -> corrected to whole=2000 cents=0)
+    int cents = (int)std::llround((absValue - (wxDouble)whole) * 100.0);
+    if (cents >= 100)
+    {
+        cents -= 100;
+        ++whole;
+    }
+
+    wxString wholeDigits = wxString::Format("%lld", whole);
+    wxString grouped;
+    int sinceLastComma = 0;
+    for (int i = (int)wholeDigits.length() - 1; i >= 0; --i)
+    {
+        grouped = wholeDigits[i] + grouped;
+        ++sinceLastComma;
+        if ((sinceLastComma % 3 == 0) && (i != 0))
+        {
+            grouped = wxT(",") + grouped;
+        }
+    }
+
+    wxString result = negative ? (wxT("-") + grouped) : grouped;
+    if (cents != 0)
+    {
+        result += wxString::Format(".%02d", cents);
+    }
+    return result;
 }
 
 void wxChartsUtilities::CalculateGridRange(wxDouble minValue,
@@ -97,10 +134,7 @@ void wxChartsUtilities::BuildNumericalLabels(wxDouble minValue,
     for (size_t i = 0; i <= steps; ++i)
     {
         wxDouble value = minValue + (i * stepValue);//.toFixed(stepDecimalPlaces);
-        std::stringstream valueStr;
-        valueStr << value;
-
-        labels.push_back(wxChartsLabel(valueStr.str(), options));
+        labels.push_back(wxChartsLabel(FormatNumber(value), options));
     }
 }
 

@@ -31,7 +31,7 @@
 /// A control that displays a pie chart.
 
 /// \ingroup chartclasses
-class WXDLLIMPEXP_ISHIKO_CHARTS wxPieChartCtrl : public wxChartCtrl, public wxChartValueObserver<std::map<wxString, wxChartSliceData>>
+class WXDLLIMPEXP_ISHIKO_CHARTS wxPieChartCtrl : public wxChartCtrl, public wxChartValueObserver<wxVector<wxChartSliceData>>
 {
 public:
     /// Constructs a wxPieChartCtrl control.
@@ -71,7 +71,7 @@ public:
 
 private:
     virtual wxPieChart& GetChart();
-    void OnUpdate(const std::map<wxString,wxChartSliceData> &data) override;
+    void OnUpdate(const wxVector<wxChartSliceData> &data) override;
 
 private:
     wxPieChart m_pieChart;

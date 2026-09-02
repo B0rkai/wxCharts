@@ -42,7 +42,7 @@ wxPieChartData::ptr wxPieChartData::make_shared()
     return ptr(new wxPieChartData());
 }
 
-const std::map<wxString, wxChartSliceData>& wxPieChartData::GetSlices() const
+const wxVector<wxChartSliceData>& wxPieChartData::GetSlices() const
 {
     return m_value;
 }
@@ -69,12 +69,19 @@ void wxPieChartData::AddSlices(const wxVector<wxChartSliceData> &slices)
 
 void wxPieChartData::Add(const wxChartSliceData &slice)
 {
-    auto key = slice.GetLabel();
-    auto it = m_value.find(key);
-    if (it == m_value.end())
-        m_value.insert(std::make_pair(key, slice));
-    else
-        it->second.SetValue(it->second.GetValue() + slice.GetValue());
+    // BankAccount-added: linear search instead of a map lookup - m_value is now an
+    // (append-order-preserving) wxVector rather than a std::map<wxString, wxChartSliceData>,
+    // see the header. Slice counts here are at most a few dozen/hundred categories, so this
+    // stays cheap.
+    for (size_t i = 0; i < m_value.size(); ++i)
+    {
+        if (m_value[i].GetLabel() == slice.GetLabel())
+        {
+            m_value[i].SetValue(m_value[i].GetValue() + slice.GetValue());
+            return;
+        }
+    }
+    m_value.push_back(slice);
 }
 
 wxDoughnutAndPieChartBase::SliceArc::SliceArc(const wxChartSliceData &slice,
@@ -119,15 +126,13 @@ wxDoughnutAndPieChartBase::wxDoughnutAndPieChartBase(const wxPieChartData::ptr d
 {
 }
 
-void wxDoughnutAndPieChartBase::SetData(const std::map<wxString, wxChartSliceData> &data)
+void wxDoughnutAndPieChartBase::SetData(const wxVector<wxChartSliceData> &data)
 {
     m_slices.resize(data.size());
     m_total = 0;
 	size_t i = 0;
-    for (const auto &pair : data)
+    for (const auto &slice : data)
     {
-        auto slice = pair.second;
-
         m_total += slice.GetValue();
         wxDouble x = (m_size.GetX() / 2) - 2;
         wxDouble y = (m_size.GetY() / 2) - 2;
@@ -154,7 +159,12 @@ void wxDoughnutAndPieChartBase::DoFit()
         m_slices[i]->Resize(m_size, GetOptions());
     }
 
-    wxDouble startAngle = 0.0;
+    // BankAccount-added: was 0.0 (angle 0 = the positive x-axis, i.e. 3 o'clock, since angles here
+    // are screen-space with y increasing downward). -M_PI / 2 starts the first slice at 12 o'clock
+    // instead, matching the conventional pie-chart layout (and wxPolarAreaChartOptions, which
+    // already exposes SetStartAngle() for the same reason - only this base class had no equivalent
+    // knob, since it always drew from the same hardcoded 0.0).
+    wxDouble startAngle = -M_PI / 2;
     for (size_t i = 0; i < m_slices.size(); ++i)
     {
         SliceArc& currentSlice = *m_slices[i];

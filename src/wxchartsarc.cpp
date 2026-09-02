@@ -43,18 +43,47 @@ wxChartsArc::wxChartsArc(wxDouble x,
                          wxDouble innerRadius,
                          const wxString &tooltip,
                          const wxChartsArcOptions &options)
-    : wxChartsElement(tooltip), m_x(x), m_y(y), 
-    m_startAngle(startAngle), m_endAngle(endAngle), 
-    m_outerRadius(outerRadius), m_innerRadius(innerRadius), 
+    : wxChartsElement(tooltip), m_x(x), m_y(y),
+    m_startAngle(startAngle), m_endAngle(endAngle),
+    m_outerRadius(outerRadius), m_innerRadius(innerRadius),
     m_options(options)
 {
+    // BankAccount-added: a slice spanning the whole circle (e.g. the only slice, at 100% share)
+    // must stay distinguishable from a zero-width one. Independently wrapping m_startAngle and
+    // m_endAngle into [0, 2*M_PI) below - needed for every ordinary slice - collapses an exact
+    // 2*M_PI sweep into m_startAngle == m_endAngle (both wrap to the same value), indistinguishable
+    // from an empty slice: Draw()'s path (built from start to end) and HitTest()'s betweenAngles
+    // check then treat it as nothing rather than the whole circle. Detected from the sweep before
+    // either angle is touched, and given the canonical, unambiguous [0, 2*M_PI] full-circle form -
+    // which the normalization below leaves untouched (0 is not > 2*M_PI or < 0; 2*M_PI is not
+    // > 2*M_PI or < 0), so no separate branch is needed for it.
+    if ((m_endAngle - m_startAngle) >= (2 * M_PI - 1e-9))
+    {
+        m_startAngle = 0;
+        m_endAngle = 2 * M_PI;
+    }
     if (m_startAngle > (2 * M_PI))
     {
         m_startAngle -= 2 * M_PI;
     }
+    // BankAccount-added: a chart whose first slice starts at a non-zero angle (e.g.
+    // wxDoughnutAndPieChartBase::DoFit()'s -M_PI/2 for a 12 o'clock start - see CLAUDE.md's
+    // wxCharts note) produces a negative raw angle for however many leading slices haven't yet
+    // reached angle 0 - previously left un-normalized here, which broke HitTest()'s angle
+    // comparison (it normalizes the mouse angle into [0, 2*M_PI) but compared it against this
+    // still-negative m_startAngle/m_endAngle), so hovering those slices in the region before angle
+    // 0 (e.g. between 12 and 3 o'clock for the very first slice) found no tooltip.
+    if (m_startAngle < 0)
+    {
+        m_startAngle += 2 * M_PI;
+    }
     if (m_endAngle > (2 * M_PI))
     {
         m_endAngle -= 2 * M_PI;
+    }
+    if (m_endAngle < 0)
+    {
+        m_endAngle += 2 * M_PI;
     }
 }
 
@@ -120,7 +149,16 @@ bool wxChartsArc::HitTest(const wxPoint &point) const
 
 wxPoint2DDouble wxChartsArc::GetTooltipPosition() const
 {
-    wxDouble centreAngle = m_startAngle + (m_endAngle - m_startAngle) / 2;
+    // BankAccount-added: m_endAngle < m_startAngle means this slice wraps past angle 0 (see the
+    // constructor's comment on why a non-zero chart start angle can produce that) - without this,
+    // the plain midpoint below landed on the wrong side of the circle for a wrapping slice, since
+    // (m_endAngle - m_startAngle) went negative instead of representing the slice's actual span.
+    wxDouble endAngle = m_endAngle;
+    if (endAngle < m_startAngle)
+    {
+        endAngle += 2 * M_PI;
+    }
+    wxDouble centreAngle = m_startAngle + (endAngle - m_startAngle) / 2;
     wxDouble rangeFromCentre = m_innerRadius + (m_outerRadius - m_innerRadius) / 2;
     wxDouble x = m_x + cos(centreAngle) * rangeFromCentre;
     wxDouble y = m_y + sin(centreAngle) * rangeFromCentre;
@@ -136,14 +174,34 @@ void wxChartsArc::SetCenter(wxDouble x, wxDouble y)
 void wxChartsArc::SetAngles(wxDouble startAngle, wxDouble endAngle)
 {
     m_startAngle = startAngle;
+    m_endAngle = endAngle;
+    // BankAccount-added: same full-circle special case as the constructor above (see its comment)
+    // - DoFit() calls SetAngles() directly for every slice after the first, so a chart whose only
+    // non-empty slice isn't the first one (e.g. earlier slices folded away as zero-value) would
+    // still hit this through SetAngles() rather than the constructor.
+    if ((m_endAngle - m_startAngle) >= (2 * M_PI - 1e-9))
+    {
+        m_startAngle = 0;
+        m_endAngle = 2 * M_PI;
+    }
     if (m_startAngle > (2 * M_PI))
     {
         m_startAngle -= 2 * M_PI;
     }
-    m_endAngle = endAngle;
+    // BankAccount-added: see the constructor's comment - same negative-angle normalization needed
+    // here, since wxDoughnutAndPieChartBase::DoFit() calls SetAngles() directly rather than going
+    // through the constructor for every slice after the first.
+    if (m_startAngle < 0)
+    {
+        m_startAngle += 2 * M_PI;
+    }
     if (m_endAngle > (2 * M_PI))
     {
         m_endAngle -= 2 * M_PI;
+    }
+    if (m_endAngle < 0)
+    {
+        m_endAngle += 2 * M_PI;
     }
 }
 

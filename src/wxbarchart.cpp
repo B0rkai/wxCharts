@@ -37,6 +37,7 @@
 #include "wxchartstheme.h"
 #include "wxchartscategoricalaxis.h"
 #include "wxchartsnumericalaxis.h"
+#include "wxchartsutilities.h"
 #include <sstream>
 
 wxBarChart::Bar::Bar(wxDouble value,
@@ -118,10 +119,8 @@ void wxBarChart::Initialize(wxChartsCategoricalData::ptr &data)
         const wxVector<wxDouble>& datasetData = dataset.GetData();
         for (size_t j = 0; j < datasetData.size(); ++j)
         {
-            std::stringstream tooltip;
-            tooltip << datasetData[j];
             wxSharedPtr<wxChartTooltipProvider> tooltipProvider(
-                new wxChartTooltipProviderStatic(data->GetCategories()[j], tooltip.str(), datasetOptions->GetBrushOptions().GetColor())
+                new wxChartTooltipProviderStatic(data->GetCategories()[j], wxChartsUtilities::FormatNumber(datasetData[j]), datasetOptions->GetBrushOptions().GetColor())
                 );
 
             newDataset->AppendBar(Bar::ptr(new Bar(

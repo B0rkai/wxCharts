@@ -44,10 +44,15 @@
 #include "wxchartobservers.h"
 #include <wx/control.h>
 #include <wx/sharedptr.h>
-#include <map>
 
+// BankAccount-added: was std::map<wxString, wxChartSliceData> (keyed, and therefore always
+// iterated, by slice label - so both the wedge draw order and any legend built straight from
+// GetSlices() were forced alphabetical by label regardless of what order slices were appended
+// in, with no way for a caller to control it). wxVector<wxChartSliceData> instead preserves
+// append order, matching wxPolarAreaChartData's own (already order-preserving) storage - see
+// ChartDialog.cpp's BuildSliceChart(), which appends slices pre-sorted by descending value.
 /// Data for the wxPieChartCtrl control.
-class WXDLLIMPEXP_ISHIKO_CHARTS wxPieChartData : public wxChartObservableValue<std::map<wxString, wxChartSliceData>>
+class WXDLLIMPEXP_ISHIKO_CHARTS wxPieChartData : public wxChartObservableValue<wxVector<wxChartSliceData>>
 {
 public:
     /// Smart pointer typedef.
@@ -56,7 +61,7 @@ public:
     wxPieChartData();
     static ptr make_shared();
 
-    const std::map<wxString, wxChartSliceData>& GetSlices() const;
+    const wxVector<wxChartSliceData>& GetSlices() const;
     void AppendSlice(const wxChartSliceData &slice);
     void UpdateSlices(const wxVector<wxChartSliceData> &slices);
     void AddSlices(const wxVector<wxChartSliceData> &slices);
@@ -78,7 +83,7 @@ public:
     /// instance.
     wxDoughnutAndPieChartBase(wxPieChartData::ptr data);
     wxDoughnutAndPieChartBase(wxPieChartData::ptr data, const wxSize &size);
-    void SetData(const std::map<wxString, wxChartSliceData> &data);
+    void SetData(const wxVector<wxChartSliceData> &data);
 
 private:
     virtual void DoSetSize(const wxSize &size);

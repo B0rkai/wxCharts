@@ -32,7 +32,7 @@
 /// A control that displays a doughnut chart.
 
 /// \ingroup chartclasses
-class WXDLLIMPEXP_ISHIKO_CHARTS wxDoughnutChartCtrl : public wxChartCtrl, public wxChartValueObserver<std::map<wxString, wxChartSliceData>>
+class WXDLLIMPEXP_ISHIKO_CHARTS wxDoughnutChartCtrl : public wxChartCtrl, public wxChartValueObserver<wxVector<wxChartSliceData>>
 {
 public:
     wxDoughnutChartCtrl(wxWindow *parent, wxWindowID id, wxPieChartData::ptr data,
@@ -44,7 +44,7 @@ public:
 
 private:
     virtual wxDoughnutChart& GetChart();
-    void OnUpdate(const std::map<wxString,wxChartSliceData> &data) override;
+    void OnUpdate(const wxVector<wxChartSliceData> &data) override;
 
 private:
     wxDoughnutChart m_doughnutChart;

@@ -49,11 +49,18 @@ public:
     const wxString& GetLabel() const;
 
     wxString GetTooltipText() const;
+    /// BankAccount-added: overrides GetTooltipText()'s "label: value" default with an exact
+    /// string - needed for a pie/doughnut slice's tooltip to show a percentage of the whole
+    /// (a slice alone has no access to the other slices' values to compute that) or, for a
+    /// periodic-data pie, both a total and a per-period average. Empty (the default) means no
+    /// override - GetTooltipText() falls back to the plain "label: value" format.
+    void SetTooltipTextOverride(const wxString &text);
 
 private:
     wxDouble m_value;
     wxColor m_color;
     wxString m_label;
+    wxString m_tooltipTextOverride;
 };
 
 #endif

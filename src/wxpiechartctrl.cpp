@@ -53,8 +53,7 @@ wxPieChart& wxPieChartCtrl::GetChart()
     return m_pieChart;
 }
 
-void wxPieChartCtrl::OnUpdate(const std::map<wxString,
-	                          wxChartSliceData> &data)
+void wxPieChartCtrl::OnUpdate(const wxVector<wxChartSliceData> &data)
 {
     m_pieChart.SetData(data);
     auto parent = this->GetParent();
