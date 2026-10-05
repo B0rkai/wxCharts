@@ -216,8 +216,10 @@ void wxLineChart::Initialize(wxChartsCategoricalData::ptr &data)
 
 wxDouble wxLineChart::GetMinValue(const wxVector<wxChartsDoubleDataset::ptr>& datasets)
 {
+    // BankAccount patch: the range always includes 0 (like wxColumnChart), so the zero line the
+    // fill closes to is always on the plot, and values stay proportional to their height.
     wxDouble result = 0;
-    bool foundValue = false;
+    bool foundValue = true;
 
     for (size_t i = 0; i < datasets.size(); ++i)
     {
@@ -241,8 +243,10 @@ wxDouble wxLineChart::GetMinValue(const wxVector<wxChartsDoubleDataset::ptr>& da
 
 wxDouble wxLineChart::GetMaxValue(const wxVector<wxChartsDoubleDataset::ptr>& datasets)
 {
+    // BankAccount patch: the range always includes 0 (like wxColumnChart), so the zero line the
+    // fill closes to is always on the plot, and values stay proportional to their height.
     wxDouble result = 0;
-    bool foundValue = false;
+    bool foundValue = true;
 
     for (size_t i = 0; i < datasets.size(); ++i)
     {
@@ -323,10 +327,17 @@ void wxLineChart::DoDraw(wxGraphicsContext &gc,
 
             gc.StrokePath(path);
 
-            wxPoint2DDouble yPos = m_grid.GetMapping().GetXAxis().GetTickMarkPosition(0);
+            // BankAccount patch: shade only between the line and zero, not down to the bottom of the
+            // plot - for a signed (Net) series the area below a negative value up to zero is what the
+            // fill should show, and the x-axis is not necessarily at zero.
+            wxDouble zeroY = m_grid.GetMapping().GetWindowPositionAtTickMark(0, 0).m_y;
+            if (points.size() == 1)
+            {
+                lastPosition = firstPosition;
+            }
 
-            path.AddLineToPoint(lastPosition.m_x, yPos.m_y);
-            path.AddLineToPoint(firstPosition.m_x, yPos.m_y);
+            path.AddLineToPoint(lastPosition.m_x, zeroY);
+            path.AddLineToPoint(firstPosition.m_x, zeroY);
             path.CloseSubpath();
 
             wxBrush brush(m_datasets[i]->GetFillColor());

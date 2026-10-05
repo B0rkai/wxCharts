@@ -135,7 +135,11 @@ wxDouble wxColumnChart::GetMinValue(const wxVector<wxChartsDoubleDataset::ptr>& 
         }
     }
 
-    return result;
+    // BankAccount patch: a column is drawn from the zero line (see DoFit()), so the value axis
+    // must always include 0 - otherwise an all-positive chart's axis floor sits above zero (bar
+    // heights no longer proportional to their values) and a negative value has no zero line to
+    // hang down from.
+    return (result < 0) ? result : 0;
 }
 
 wxDouble wxColumnChart::GetMaxValue(const wxVector<wxChartsDoubleDataset::ptr>& datasets)
@@ -160,7 +164,8 @@ wxDouble wxColumnChart::GetMaxValue(const wxVector<wxChartsDoubleDataset::ptr>& 
         }
     }
 
-    return result;
+    // BankAccount patch: see GetMinValue().
+    return (result > 0) ? result : 0;
 }
 
 void wxColumnChart::DoSetSize(const wxSize &size)
@@ -181,10 +186,16 @@ void wxColumnChart::DoFit()
             wxPoint2DDouble position = m_grid.GetMapping().GetWindowPositionAtTickMark(j, column.GetValue());
             position.m_x += m_options->GetColumnSpacing() + (i * (columnWidth + m_options->GetDatasetSpacing()));
 
-            wxPoint2DDouble bottomLeftCornerPosition = m_grid.GetMapping().GetXAxis().GetTickMarkPosition(j);
+            // BankAccount patch: columns hang from the zero line rather than standing on the
+            // x-axis (the bottom of the grid), so a negative value is drawn downward from zero
+            // instead of as an upward bar indistinguishable from a positive one. The rectangle is
+            // kept normalized (top-left corner + non-negative height) for drawing/hit-testing.
+            wxDouble zeroY = m_grid.GetMapping().GetWindowPositionAtTickMark(j, 0).m_y;
+            wxDouble top = (position.m_y < zeroY) ? position.m_y : zeroY;
+            wxDouble height = (position.m_y < zeroY) ? (zeroY - position.m_y) : (position.m_y - zeroY);
 
-            column.SetPosition(position);
-            column.SetSize(columnWidth, bottomLeftCornerPosition.m_y - position.m_y);
+            column.SetPosition(position.m_x, top);
+            column.SetSize(columnWidth, height);
         }
     }
 }

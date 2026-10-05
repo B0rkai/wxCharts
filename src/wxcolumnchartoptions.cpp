@@ -31,7 +31,9 @@ wxColumnChartOptions::wxColumnChartOptions()
         ),
     m_columnSpacing(15), m_datasetSpacing(6)
 {
-    m_gridOptions.GetYAxisOptions().SetExplicitStartValue(0);
+    // BankAccount patch: no explicit start value of 0 - it pinned the axis floor at zero, so a
+    // negative column hung below the plot area. wxColumnChart::GetMinValue() already always
+    // includes 0 in the range (and goes below it for negative data).
 }
 
 const wxChartsGridOptions& wxColumnChartOptions::GetGridOptions() const
